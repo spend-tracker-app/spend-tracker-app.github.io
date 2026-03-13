@@ -50,7 +50,7 @@
 
 .top-tabs {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     background: var(--surface-3);
     border: 1px solid var(--border);
@@ -92,6 +92,25 @@
 .charts-panel {
     display: grid;
     gap: 12px;
+}
+
+.accounts-list {
+    display: grid;
+    gap: 10px;
+}
+
+.account-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.account-card>div {
+    min-width: 0;
 }
 
 .stats-grid {
@@ -280,6 +299,7 @@ button:active {
 .connect-strip input,
 .connect-strip button,
 .editor-form input,
+.editor-form select,
 .editor-form button {
     width: 100%;
     min-width: 0;
@@ -299,6 +319,26 @@ button:active {
     color: #fff;
     cursor: pointer;
     font-weight: 600;
+}
+
+.query-strip select,
+.editor-form select {
+    appearance: none;
+}
+
+.query-strip select:focus,
+.editor-form select:focus,
+.query-strip input:focus,
+.editor-form input:focus,
+.connect-strip input:focus {
+    outline: none;
+    border-color: var(--button-primary);
+}
+
+.query-strip select option,
+.editor-form select option {
+    background: var(--surface-2);
+    color: var(--text-primary);
 }
 
 .loading,
@@ -635,6 +675,6 @@ button:active {
     }
 
     .query-strip {
-        grid-template-columns: 1fr 220px 140px 120px;
+        grid-template-columns: 1fr 220px 140px 120px 120px;
     }
 }

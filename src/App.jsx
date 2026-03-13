@@ -3,6 +3,7 @@ import {
     BarChart3,
     Link2,
     Moon,
+    Plus,
     ReceiptText,
     Sun,
     Tags,
@@ -13,6 +14,8 @@ import { PieChart } from "@mui/x-charts/PieChart";
 import "./App.css";
 
 const EditTransactionModal = lazy(() => import("./components/EditTransactionModal.jsx"));
+const AddTransactionModal = lazy(() => import("./components/AddTransactionModal.jsx"));
+const AddAccountModal = lazy(() => import("./components/AddAccountModal.jsx"));
 const CHART_COLORS = ["#5b8cff", "#8b5cf6", "#22c55e", "#f59e0b", "#ef4444", "#14b8a6"];
 const CHART_COLORS_LIGHT = ["#3659f6", "#6d43d8", "#178a47", "#c27a07", "#c43232", "#0b8f82"];
 
@@ -105,8 +108,9 @@ function App() {
     const [isConnected, setIsConnected] = useState(false);
     const [theme, setTheme] = useState(localStorage.getItem("tx_theme") || "dark");
 
-    const [transactions, setTransactions] = useState([]);
     const [filteredTransactions, setFilteredTransactions] = useState([]);
+    const [totalItems, setTotalItems] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
     const [overviewSummary, setOverviewSummary] = useState({
         totalSpending: 0,
         transactionCount: 0,
@@ -115,14 +119,16 @@ function App() {
     const [overviewCategories, setOverviewCategories] = useState([]);
     const [overviewTimeseries, setOverviewTimeseries] = useState([]);
     const [accounts, setAccounts] = useState([]);
+    const [accountsOverview, setAccountsOverview] = useState([]);
     const [loading, setLoading] = useState(false);
     const [query, setQuery] = useState("");
     const [accountId, setAccountId] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [mobileVisibleCount, setMobileVisibleCount] = useState(10);
     const [isMobile, setIsMobile] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("overview");
     const [chartGranularity, setChartGranularity] = useState("month");
     const [editForm, setEditForm] = useState({
@@ -134,8 +140,24 @@ function App() {
         transaction_timestamp: "",
     });
     const [saving, setSaving] = useState(false);
+    const [adding, setAdding] = useState(false);
+    const [addingAccount, setAddingAccount] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [mccOptions, setMccOptions] = useState([]);
     const [showMccOptions, setShowMccOptions] = useState(false);
+    const [addForm, setAddForm] = useState({
+        account_id: "",
+        merchant: "",
+        amount: "",
+        currency: "SGD",
+        category: "",
+        mcc_code: "",
+        transaction_timestamp: new Date().toISOString().slice(0, 16),
+    });
+    const [addAccountForm, setAddAccountForm] = useState({
+        bank: "",
+        identifier: "",
+    });
     const infiniteSentinelRef = useRef(null);
 
     useEffect(() => {
@@ -168,31 +190,6 @@ function App() {
         }
     };
 
-    const fetchTransactions = async (baseUrl = backendUrl) => {
-        if (!baseUrl) return false;
-
-        setLoading(true);
-        try {
-            const response = await fetch(`${baseUrl}/api/transactions?limit=200`);
-            if (!response.ok) throw new Error("unavailable");
-            const data = await response.json();
-            const normalized = Array.isArray(data) ? data : [];
-            setTransactions(normalized);
-            setFilteredTransactions(normalized);
-            setCurrentPage(1);
-            setMobileVisibleCount(pageSize);
-            return true;
-        } catch {
-            setTransactions([]);
-            setFilteredTransactions([]);
-            setCurrentPage(1);
-            setMobileVisibleCount(pageSize);
-            return false;
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const fetchOverview = async (baseUrl = backendUrl) => {
         if (!baseUrl) return false;
 
@@ -219,6 +216,22 @@ function App() {
         }
     };
 
+    const fetchAccountsOverview = async (baseUrl = backendUrl) => {
+        if (!baseUrl) return false;
+
+        try {
+            const response = await fetch(`${baseUrl}/api/accounts/overview`);
+            if (!response.ok) throw new Error("unavailable");
+
+            const data = await response.json();
+            setAccountsOverview(Array.isArray(data) ? data : []);
+            return true;
+        } catch {
+            setAccountsOverview([]);
+            return false;
+        }
+    };
+
     const fetchOverviewTimeseries = async (baseUrl = backendUrl, granularity = chartGranularity) => {
         if (!baseUrl) return false;
 
@@ -236,29 +249,69 @@ function App() {
         }
     };
 
-    const fetchFilteredTransactions = async (baseUrl = backendUrl) => {
+    const fetchFilteredTransactions = async (
+        baseUrl = backendUrl,
+        options = { page: 1, append: false }
+    ) => {
         if (!baseUrl) return false;
 
-        setLoading(true);
+        const requestedPage = Math.max(1, Number(options.page || 1));
+        const append = Boolean(options.append) && requestedPage > 1;
+        const offset = (requestedPage - 1) * pageSize;
+
+        if (append) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
+        }
+
         try {
-            const params = new URLSearchParams({ limit: "200" });
+            const params = new URLSearchParams({
+                limit: String(pageSize),
+                offset: String(offset),
+            });
             if (query.trim()) params.set("search", query.trim());
             if (accountId) params.set("accountId", accountId);
 
             const response = await fetch(`${baseUrl}/api/transactions?${params.toString()}`);
             if (!response.ok) throw new Error("unavailable");
             const data = await response.json();
-            setFilteredTransactions(Array.isArray(data) ? data : []);
-            setCurrentPage(1);
-            setMobileVisibleCount(pageSize);
+
+            const items = Array.isArray(data) ? data : Array.isArray(data.items) ? data.items : [];
+            const nextTotalItems = Array.isArray(data)
+                ? items.length
+                : Math.max(0, Number(data.total_items || 0));
+            const nextTotalPages = Array.isArray(data)
+                ? Math.max(1, Math.ceil(items.length / pageSize))
+                : Math.max(1, Number(data.total_pages || 1));
+
+            setFilteredTransactions((prev) => {
+                if (!append) return items;
+
+                const merged = [...prev, ...items];
+                const seen = new Set();
+
+                return merged.filter((item) => {
+                    const key = String(item?.id ?? "");
+                    if (!key || seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+            });
+            setTotalItems(nextTotalItems);
+            setTotalPages(nextTotalPages);
             return true;
         } catch {
             setFilteredTransactions([]);
-            setCurrentPage(1);
-            setMobileVisibleCount(pageSize);
+            setTotalItems(0);
+            setTotalPages(1);
             return false;
         } finally {
-            setLoading(false);
+            if (append) {
+                setLoadingMore(false);
+            } else {
+                setLoading(false);
+            }
         }
     };
 
@@ -268,38 +321,42 @@ function App() {
             setIsConnected(false);
             setBackendUrl("");
             setAccounts([]);
-            setTransactions([]);
+            setAccountsOverview([]);
             setFilteredTransactions([]);
+            setTotalItems(0);
+            setTotalPages(1);
             setOverviewSummary({ totalSpending: 0, transactionCount: 0, averageTransaction: 0 });
             setOverviewCategories([]);
             setOverviewTimeseries([]);
             setCurrentPage(1);
-            setMobileVisibleCount(pageSize);
             return;
         }
 
         setBackendUrl(normalized);
         localStorage.setItem("tx_backend_url", normalized);
+        setCurrentPage(1);
 
-        const [accountsOk, transactionsOk, overviewOk, timeseriesOk] = await Promise.all([
+        const [accountsOk, transactionsOk, overviewOk, timeseriesOk, accountsOverviewOk] = await Promise.all([
             fetchAccounts(normalized),
-            fetchTransactions(normalized),
+            fetchFilteredTransactions(normalized, { page: 1, append: false }),
             fetchOverview(normalized),
             fetchOverviewTimeseries(normalized, chartGranularity),
+            fetchAccountsOverview(normalized),
         ]);
 
-        const ok = accountsOk && transactionsOk && overviewOk && timeseriesOk;
+        const ok = accountsOk && transactionsOk && overviewOk && timeseriesOk && accountsOverviewOk;
         setIsConnected(ok);
 
         if (!ok) {
             setAccounts([]);
-            setTransactions([]);
+            setAccountsOverview([]);
             setFilteredTransactions([]);
+            setTotalItems(0);
+            setTotalPages(1);
             setOverviewSummary({ totalSpending: 0, transactionCount: 0, averageTransaction: 0 });
             setOverviewCategories([]);
             setOverviewTimeseries([]);
             setCurrentPage(1);
-            setMobileVisibleCount(pageSize);
         }
     };
 
@@ -310,25 +367,28 @@ function App() {
         setBackendUrlInput(normalized);
         setBackendUrl(normalized);
         localStorage.setItem("tx_backend_url", normalized);
+        setCurrentPage(1);
 
         Promise.all([
             fetchAccounts(normalized),
-            fetchTransactions(normalized),
+            fetchFilteredTransactions(normalized, { page: 1, append: false }),
             fetchOverview(normalized),
             fetchOverviewTimeseries(normalized, chartGranularity),
-        ]).then(([accountsOk, transactionsOk, overviewOk, timeseriesOk]) => {
-            const ok = accountsOk && transactionsOk && overviewOk && timeseriesOk;
+            fetchAccountsOverview(normalized),
+        ]).then(([accountsOk, transactionsOk, overviewOk, timeseriesOk, accountsOverviewOk]) => {
+            const ok = accountsOk && transactionsOk && overviewOk && timeseriesOk && accountsOverviewOk;
             setIsConnected(ok);
 
             if (!ok) {
                 setAccounts([]);
-                setTransactions([]);
+                setAccountsOverview([]);
                 setFilteredTransactions([]);
+                setTotalItems(0);
+                setTotalPages(1);
                 setOverviewSummary({ totalSpending: 0, transactionCount: 0, averageTransaction: 0 });
                 setOverviewCategories([]);
                 setOverviewTimeseries([]);
                 setCurrentPage(1);
-                setMobileVisibleCount(pageSize);
             }
         }
         );
@@ -343,11 +403,25 @@ function App() {
         if (!isConnected || !backendUrl) return;
 
         const timeoutId = setTimeout(() => {
-            fetchFilteredTransactions();
+            setCurrentPage(1);
+            fetchFilteredTransactions(backendUrl, { page: 1, append: false });
         }, 250);
 
         return () => clearTimeout(timeoutId);
-    }, [query, accountId, isConnected, backendUrl]);
+    }, [query, accountId, pageSize, isConnected, backendUrl]);
+
+    useEffect(() => {
+        if (!isConnected || !backendUrl || activeTab !== "transactions") return;
+
+        const timeoutId = setTimeout(() => {
+            fetchFilteredTransactions(backendUrl, {
+                page: currentPage,
+                append: isMobile && currentPage > 1,
+            });
+        }, 150);
+
+        return () => clearTimeout(timeoutId);
+    }, [currentPage, isConnected, backendUrl, activeTab, isMobile]);
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -382,6 +456,32 @@ function App() {
         setShowMccOptions(false);
     };
 
+    const openAddModal = () => {
+        setAddForm({
+            account_id: accounts[0]?.id ? String(accounts[0].id) : "",
+            merchant: "",
+            amount: "",
+            currency: "SGD",
+            category: "",
+            mcc_code: "",
+            transaction_timestamp: new Date().toISOString().slice(0, 16),
+        });
+        setIsAddModalOpen(true);
+    };
+
+    const closeAddModal = () => {
+        setIsAddModalOpen(false);
+    };
+
+    const openAddAccountModal = () => {
+        setAddAccountForm({ bank: "", identifier: "" });
+        setIsAddAccountModalOpen(true);
+    };
+
+    const closeAddAccountModal = () => {
+        setIsAddAccountModalOpen(false);
+    };
+
     const onSave = async (event) => {
         event.preventDefault();
         if (!selectedTransaction || !backendUrl || !isConnected) return;
@@ -405,23 +505,129 @@ function App() {
             if (!response.ok) throw new Error("unavailable");
 
             closeEditModal();
-            await fetchTransactions();
-            await fetchFilteredTransactions();
+            setCurrentPage(1);
+            await fetchFilteredTransactions(backendUrl, { page: 1, append: false });
             await fetchOverview();
         } catch {
             setIsConnected(false);
             setAccounts([]);
-            setTransactions([]);
             setFilteredTransactions([]);
+            setTotalItems(0);
+            setTotalPages(1);
             setOverviewSummary({ totalSpending: 0, transactionCount: 0, averageTransaction: 0 });
             setOverviewCategories([]);
             setOverviewTimeseries([]);
             setCurrentPage(1);
-            setMobileVisibleCount(pageSize);
             closeEditModal();
         } finally {
             setSaving(false);
         }
+    };
+
+    const onAdd = async (event) => {
+        event.preventDefault();
+        if (!backendUrl || !isConnected) return;
+
+        setAdding(true);
+
+        try {
+            const response = await fetch(`${backendUrl}/api/transactions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    account_id: Number(addForm.account_id),
+                    merchant: addForm.merchant,
+                    amount: Number(addForm.amount),
+                    currency: addForm.currency,
+                    category: addForm.category,
+                    mcc_code: addForm.mcc_code,
+                    transaction_timestamp: new Date(addForm.transaction_timestamp).toISOString(),
+                }),
+            });
+
+            if (!response.ok) throw new Error("unavailable");
+
+            closeAddModal();
+            setCurrentPage(1);
+            await fetchFilteredTransactions(backendUrl, { page: 1, append: false });
+            await fetchOverview(backendUrl);
+            await fetchOverviewTimeseries(backendUrl, chartGranularity);
+        } catch {
+            setIsConnected(false);
+            setAccounts([]);
+            setFilteredTransactions([]);
+            setTotalItems(0);
+            setTotalPages(1);
+            setOverviewSummary({ totalSpending: 0, transactionCount: 0, averageTransaction: 0 });
+            setOverviewCategories([]);
+            setOverviewTimeseries([]);
+            setCurrentPage(1);
+            closeAddModal();
+        } finally {
+            setAdding(false);
+        }
+    };
+
+    const onAddAccount = async (event) => {
+        event.preventDefault();
+        if (!backendUrl || !isConnected) return;
+
+        setAddingAccount(true);
+
+        try {
+            const response = await fetch(`${backendUrl}/api/accounts`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    bank: addAccountForm.bank,
+                    identifier: addAccountForm.identifier,
+                }),
+            });
+
+            if (!response.ok) throw new Error("unavailable");
+
+            closeAddAccountModal();
+            await fetchAccounts(backendUrl);
+            await fetchAccountsOverview(backendUrl);
+        } catch {
+            setIsConnected(false);
+            setAccounts([]);
+            setAccountsOverview([]);
+            setFilteredTransactions([]);
+            setTotalItems(0);
+            setTotalPages(1);
+            setOverviewSummary({ totalSpending: 0, transactionCount: 0, averageTransaction: 0 });
+            setOverviewCategories([]);
+            setOverviewTimeseries([]);
+            setCurrentPage(1);
+            closeAddAccountModal();
+        } finally {
+            setAddingAccount(false);
+        }
+    };
+
+    const onTabClick = (tabName) => {
+        setActiveTab(tabName);
+
+        if (!isConnected || !backendUrl) return;
+
+        if (tabName === "overview") {
+            fetchOverview(backendUrl);
+            fetchAccounts(backendUrl);
+            fetchAccountsOverview(backendUrl);
+            return;
+        }
+
+        if (tabName === "transactions") {
+            if (isMobile && currentPage !== 1) {
+                setCurrentPage(1);
+                return;
+            }
+            fetchFilteredTransactions(backendUrl, { page: currentPage, append: false });
+            return;
+        }
+
+        fetchOverviewTimeseries(backendUrl, chartGranularity);
     };
 
     const totalSpending = overviewSummary.totalSpending;
@@ -476,27 +682,11 @@ function App() {
         [spendingOverTime]
     );
 
-    const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
-    const paginatedTransactions = useMemo(() => {
-        const startIndex = (currentPage - 1) * pageSize;
-        return filteredTransactions.slice(startIndex, startIndex + pageSize);
-    }, [filteredTransactions, currentPage, pageSize]);
-
-    const mobileVisibleTransactions = useMemo(
-        () => filteredTransactions.slice(0, mobileVisibleCount),
-        [filteredTransactions, mobileVisibleCount]
-    );
-
     useEffect(() => {
         if (currentPage > totalPages) {
             setCurrentPage(totalPages);
         }
     }, [currentPage, totalPages]);
-
-    useEffect(() => {
-        setCurrentPage(1);
-        setMobileVisibleCount(pageSize);
-    }, [pageSize]);
 
     useEffect(() => {
         if (!isMobile || activeTab !== "transactions") return;
@@ -508,9 +698,9 @@ function App() {
                 const firstEntry = entries[0];
                 if (!firstEntry.isIntersecting) return;
 
-                setMobileVisibleCount((prev) => {
-                    if (prev >= filteredTransactions.length) return prev;
-                    return Math.min(prev + pageSize, filteredTransactions.length);
+                setCurrentPage((prev) => {
+                    if (loading || loadingMore || prev >= totalPages) return prev;
+                    return prev + 1;
                 });
             },
             { rootMargin: "120px" }
@@ -518,7 +708,7 @@ function App() {
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [isMobile, activeTab, filteredTransactions.length, pageSize]);
+    }, [isMobile, activeTab, loading, loadingMore, totalPages]);
 
     return (
         <div className="tracker-shell">
@@ -557,19 +747,19 @@ function App() {
                     <nav className="top-tabs">
                         <button
                             className={activeTab === "overview" ? "active" : ""}
-                            onClick={() => setActiveTab("overview")}
+                            onClick={() => onTabClick("overview")}
                         >
                             <Wallet size={15} className="ui-icon" /> Overview
                         </button>
                         <button
                             className={activeTab === "transactions" ? "active" : ""}
-                            onClick={() => setActiveTab("transactions")}
+                            onClick={() => onTabClick("transactions")}
                         >
                             <ReceiptText size={15} className="ui-icon" /> Transactions
                         </button>
                         <button
                             className={activeTab === "charts" ? "active" : ""}
-                            onClick={() => setActiveTab("charts")}
+                            onClick={() => onTabClick("charts")}
                         >
                             <BarChart3 size={15} className="ui-icon" /> Charts
                         </button>
@@ -667,6 +857,33 @@ function App() {
                                 {!categoryStats.length && <p className="empty">No transactions available.</p>}
                             </section>
 
+                            <section className="category-list-card">
+                                <h2>Accounts</h2>
+                                <section className="query-strip">
+                                    <button onClick={openAddAccountModal}>
+                                        <Plus size={15} className="ui-icon" /> Add account
+                                    </button>
+                                    <button onClick={() => fetchAccountsOverview(backendUrl)}>Refresh</button>
+                                </section>
+
+                                <section className="accounts-list">
+                                    {accountsOverview.map((account) => (
+                                        <article key={account.id} className="account-card">
+                                            <div>
+                                                <p className="merchant">{account.bank}</p>
+                                                <p className="meta">{account.identifier || "No identifier"}</p>
+                                            </div>
+                                            <div className="tx-right">
+                                                <p className="amount">{formatCurrency(account.total_spending)}</p>
+                                                <p className="meta">{account.transaction_count} transactions</p>
+                                                <p className="meta">Avg {formatCurrency(account.average_transaction)}</p>
+                                            </div>
+                                        </article>
+                                    ))}
+                                    {!accountsOverview.length && <p className="empty">No accounts available.</p>}
+                                </section>
+                            </section>
+
                             <footer className="app-footer">Powered by Transaction Manager • Data synced via API</footer>
                         </main>
                     ) : activeTab === "transactions" ? (
@@ -692,7 +909,10 @@ function App() {
                                     <option value={20}>20 per page</option>
                                     <option value={50}>50 per page</option>
                                 </select>
-                                <button onClick={() => fetchFilteredTransactions()}>Refresh</button>
+                                <button onClick={openAddModal} disabled={!accounts.length}>
+                                    <Plus size={15} className="ui-icon" /> Add
+                                </button>
+                                <button onClick={() => fetchFilteredTransactions(backendUrl, { page: currentPage, append: false })}>Refresh</button>
                             </section>
 
                             {loading ? (
@@ -700,7 +920,7 @@ function App() {
                             ) : (
                                 <>
                                     <section className="tx-list">
-                                        {(isMobile ? mobileVisibleTransactions : paginatedTransactions).map((transaction) => (
+                                        {filteredTransactions.map((transaction) => (
                                             <article key={transaction.id} className="tx-card">
                                                 <div>
                                                     <p className="merchant">{transaction.merchant || "Unknown merchant"}</p>
@@ -721,7 +941,7 @@ function App() {
                                         {!filteredTransactions.length && <p className="empty">No transactions found.</p>}
                                     </section>
 
-                                    {!isMobile && filteredTransactions.length > 0 && (
+                                    {!isMobile && totalItems > 0 && (
                                         <section className="pagination-strip">
                                             <button
                                                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -741,17 +961,17 @@ function App() {
                                         </section>
                                     )}
 
-                                    {isMobile && filteredTransactions.length > 0 && (
+                                    {isMobile && totalItems > 0 && (
                                         <section className="pagination-strip">
                                             <span>
-                                                Showing {mobileVisibleTransactions.length} of {filteredTransactions.length}
+                                                Showing {filteredTransactions.length} of {totalItems}
                                             </span>
                                         </section>
                                     )}
 
-                                    {isMobile && mobileVisibleTransactions.length < filteredTransactions.length && (
+                                    {isMobile && currentPage < totalPages && (
                                         <div className="infinite-sentinel" ref={infiniteSentinelRef}>
-                                            Loading more...
+                                            {loadingMore ? "Loading more..." : "Scroll to load more"}
                                         </div>
                                     )}
                                 </>
@@ -813,6 +1033,23 @@ function App() {
             )}
 
             <Suspense fallback={null}>
+                <AddTransactionModal
+                    isOpen={isAddModalOpen}
+                    closeAddModal={closeAddModal}
+                    onAdd={onAdd}
+                    addForm={addForm}
+                    setAddForm={setAddForm}
+                    accounts={accounts}
+                    adding={adding}
+                />
+                <AddAccountModal
+                    isOpen={isAddAccountModalOpen}
+                    closeAddAccountModal={closeAddAccountModal}
+                    onAddAccount={onAddAccount}
+                    addAccountForm={addAccountForm}
+                    setAddAccountForm={setAddAccountForm}
+                    addingAccount={addingAccount}
+                />
                 <EditTransactionModal
                     selectedTransaction={selectedTransaction}
                     closeEditModal={closeEditModal}
