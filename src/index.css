@@ -1,0 +1,54 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+* {
+  box-sizing: border-box;
+}
+
+:root,
+html[data-theme="dark"] {
+  --bg-gradient: radial-gradient(circle at top, #1c2442, #0a0f1f 55%);
+  --text-primary: #edf0ff;
+  --text-heading: #f6f8ff;
+  --text-muted: #95a2ce;
+  --text-subtle: #8f9bc2;
+  --surface: #11162a;
+  --surface-2: #0b1022;
+  --surface-3: #161b31;
+  --surface-4: #2a3459;
+  --border: #242d4f;
+  --border-2: #303a61;
+  --button-primary: #4d67ff;
+  --danger-bg: #4a1d1f;
+  --danger-border: #743133;
+  --danger-text: #ffc8c8;
+  --overlay: rgba(4, 8, 20, 0.7);
+}
+
+html[data-theme="light"] {
+  --bg-gradient: radial-gradient(circle at top, #eef4ff, #f7f9ff 55%);
+  --text-primary: #1a2444;
+  --text-heading: #101b39;
+  --text-muted: #5a6b96;
+  --text-subtle: #6a7aa1;
+  --surface: #ffffff;
+  --surface-2: #f7f9ff;
+  --surface-3: #eef2ff;
+  --surface-4: #dfe6ff;
+  --border: #d4def9;
+  --border-2: #c7d5f8;
+  --button-primary: #4d67ff;
+  --danger-bg: #ffecec;
+  --danger-border: #ffc9c9;
+  --danger-text: #8a1f2b;
+  --overlay: rgba(16, 27, 57, 0.35);
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg-gradient);
+  color: var(--text-primary);
+}
