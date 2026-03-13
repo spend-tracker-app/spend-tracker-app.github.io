@@ -185,7 +185,6 @@ function App() {
             setAccounts(Array.isArray(data) ? data : []);
             return true;
         } catch {
-            setAccounts([]);
             return false;
         }
     };
@@ -206,12 +205,6 @@ function App() {
             setOverviewCategories(Array.isArray(data.categories) ? data.categories : []);
             return true;
         } catch {
-            setOverviewSummary({
-                totalSpending: 0,
-                transactionCount: 0,
-                averageTransaction: 0,
-            });
-            setOverviewCategories([]);
             return false;
         }
     };
@@ -227,7 +220,6 @@ function App() {
             setAccountsOverview(Array.isArray(data) ? data : []);
             return true;
         } catch {
-            setAccountsOverview([]);
             return false;
         }
     };
@@ -244,7 +236,6 @@ function App() {
             setOverviewTimeseries(Array.isArray(data) ? data : []);
             return true;
         } catch {
-            setOverviewTimeseries([]);
             return false;
         }
     };
@@ -302,9 +293,6 @@ function App() {
             setTotalPages(nextTotalPages);
             return true;
         } catch {
-            setFilteredTransactions([]);
-            setTotalItems(0);
-            setTotalPages(1);
             return false;
         } finally {
             if (append) {
@@ -344,7 +332,7 @@ function App() {
             fetchAccountsOverview(normalized),
         ]);
 
-        const ok = accountsOk && transactionsOk && overviewOk && timeseriesOk && accountsOverviewOk;
+        const ok = accountsOk || transactionsOk || overviewOk || timeseriesOk || accountsOverviewOk;
         setIsConnected(ok);
 
         if (!ok) {
@@ -376,7 +364,7 @@ function App() {
             fetchOverviewTimeseries(normalized, chartGranularity),
             fetchAccountsOverview(normalized),
         ]).then(([accountsOk, transactionsOk, overviewOk, timeseriesOk, accountsOverviewOk]) => {
-            const ok = accountsOk && transactionsOk && overviewOk && timeseriesOk && accountsOverviewOk;
+            const ok = accountsOk || transactionsOk || overviewOk || timeseriesOk || accountsOverviewOk;
             setIsConnected(ok);
 
             if (!ok) {
@@ -509,16 +497,7 @@ function App() {
             await fetchFilteredTransactions(backendUrl, { page: 1, append: false });
             await fetchOverview();
         } catch {
-            setIsConnected(false);
-            setAccounts([]);
-            setFilteredTransactions([]);
-            setTotalItems(0);
-            setTotalPages(1);
-            setOverviewSummary({ totalSpending: 0, transactionCount: 0, averageTransaction: 0 });
-            setOverviewCategories([]);
-            setOverviewTimeseries([]);
-            setCurrentPage(1);
-            closeEditModal();
+            setIsConnected(true);
         } finally {
             setSaving(false);
         }
@@ -553,16 +532,7 @@ function App() {
             await fetchOverview(backendUrl);
             await fetchOverviewTimeseries(backendUrl, chartGranularity);
         } catch {
-            setIsConnected(false);
-            setAccounts([]);
-            setFilteredTransactions([]);
-            setTotalItems(0);
-            setTotalPages(1);
-            setOverviewSummary({ totalSpending: 0, transactionCount: 0, averageTransaction: 0 });
-            setOverviewCategories([]);
-            setOverviewTimeseries([]);
-            setCurrentPage(1);
-            closeAddModal();
+            setIsConnected(true);
         } finally {
             setAdding(false);
         }
@@ -590,17 +560,7 @@ function App() {
             await fetchAccounts(backendUrl);
             await fetchAccountsOverview(backendUrl);
         } catch {
-            setIsConnected(false);
-            setAccounts([]);
-            setAccountsOverview([]);
-            setFilteredTransactions([]);
-            setTotalItems(0);
-            setTotalPages(1);
-            setOverviewSummary({ totalSpending: 0, transactionCount: 0, averageTransaction: 0 });
-            setOverviewCategories([]);
-            setOverviewTimeseries([]);
-            setCurrentPage(1);
-            closeAddAccountModal();
+            setIsConnected(true);
         } finally {
             setAddingAccount(false);
         }
