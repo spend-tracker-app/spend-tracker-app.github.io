@@ -1,7 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import {
     BarChart3,
-    Clock,
     Link2,
     Moon,
     Plus,
@@ -20,86 +19,14 @@ const AddAccountModal = lazy(() => import("./components/AddAccountModal.jsx"));
 const CHART_COLORS = ["#5b8cff", "#8b5cf6", "#22c55e", "#f59e0b", "#ef4444", "#14b8a6"];
 const CHART_COLORS_LIGHT = ["#3659f6", "#6d43d8", "#178a47", "#c27a07", "#c43232", "#0b8f82"];
 
-const COMMON_TIMEZONES = [
-    { value: "auto", label: "Auto-detect (browser)" },
-    { value: "UTC", label: "UTC (UTC±0)" },
-    { value: "America/New_York", label: "Eastern Time (UTC-5/-4)" },
-    { value: "America/Chicago", label: "Central Time (UTC-6/-5)" },
-    { value: "America/Denver", label: "Mountain Time (UTC-7/-6)" },
-    { value: "America/Los_Angeles", label: "Pacific Time (UTC-8/-7)" },
-    { value: "America/Anchorage", label: "Alaska (UTC-9/-8)" },
-    { value: "America/Honolulu", label: "Hawaii (UTC-10)" },
-    { value: "America/Sao_Paulo", label: "Brazil / São Paulo (UTC-3/-2)" },
-    { value: "America/Argentina/Buenos_Aires", label: "Argentina (UTC-3)" },
-    { value: "Europe/London", label: "London (UTC+0/+1)" },
-    { value: "Europe/Paris", label: "Central Europe (UTC+1/+2)" },
-    { value: "Europe/Helsinki", label: "Eastern Europe (UTC+2/+3)" },
-    { value: "Europe/Moscow", label: "Moscow (UTC+3)" },
-    { value: "Asia/Dubai", label: "Dubai (UTC+4)" },
-    { value: "Asia/Kolkata", label: "India (UTC+5:30)" },
-    { value: "Asia/Dhaka", label: "Bangladesh (UTC+6)" },
-    { value: "Asia/Bangkok", label: "Indochina (UTC+7)" },
-    { value: "Asia/Singapore", label: "Singapore / Hong Kong / China (UTC+8)" },
-    { value: "Asia/Tokyo", label: "Japan / Korea (UTC+9)" },
-    { value: "Australia/Darwin", label: "Australia Central (UTC+9:30)" },
-    { value: "Australia/Sydney", label: "Australia Eastern (UTC+10/+11)" },
-    { value: "Pacific/Auckland", label: "New Zealand (UTC+12/+13)" },
-];
-
 function formatCurrency(value, currency = "SGD") {
     const amount = Number(value || 0);
     return `${currency} ${amount.toFixed(2)}`;
 }
 
-function formatDate(dateString, timezone) {
+function formatDate(dateString) {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleString(undefined, timezone ? { timeZone: timezone } : undefined);
-}
-
-function resolveTimezone(tz) {
-    return !tz || tz === "auto" ? Intl.DateTimeFormat().resolvedOptions().timeZone : tz;
-}
-
-function toTimezoneLocalInput(isoString, tz) {
-    if (!isoString) return "";
-    const timezone = resolveTimezone(tz);
-    const date = new Date(isoString);
-    const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: timezone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-    }).formatToParts(date);
-    const get = (type) => parts.find((p) => p.type === type)?.value ?? "00";
-    return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
-}
-
-function fromTimezoneLocalInput(localString, tz) {
-    if (!localString) return "";
-    const timezone = resolveTimezone(tz);
-    // Treat localString as UTC to create a probe date (not correct UTC yet).
-    const tentative = new Date(localString + ":00.000Z");
-    // Find what that probe time looks like when displayed in the target timezone.
-    const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: timezone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hourCycle: "h23",
-    }).formatToParts(tentative);
-    const get = (type) => parts.find((p) => p.type === type)?.value ?? "00";
-    const displayed = new Date(
-        `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}.000Z`
-    );
-    // offset = displayed - tentative (positive when timezone is ahead of UTC).
-    // True UTC = tentative - offset = tentative - (displayed - tentative) = 2*tentative - displayed.
-    return new Date(2 * tentative.getTime() - displayed.getTime()).toISOString();
+    return new Date(dateString).toLocaleString();
 }
 
 function getCategoryLabel(transaction) {
@@ -180,8 +107,6 @@ function App() {
     const [backendUrl, setBackendUrl] = useState("");
     const [isConnected, setIsConnected] = useState(false);
     const [theme, setTheme] = useState(localStorage.getItem("tx_theme") || "dark");
-    const [timezone, setTimezone] = useState(localStorage.getItem("tx_timezone") || "auto");
-    const [isTimezoneModalOpen, setIsTimezoneModalOpen] = useState(false);
 
     const [filteredTransactions, setFilteredTransactions] = useState([]);
     const [totalItems, setTotalItems] = useState(0);
@@ -239,10 +164,6 @@ function App() {
         document.documentElement.setAttribute("data-theme", theme);
         localStorage.setItem("tx_theme", theme);
     }, [theme]);
-
-    useEffect(() => {
-        localStorage.setItem("tx_timezone", timezone);
-    }, [timezone]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -303,11 +224,11 @@ function App() {
         }
     };
 
-    const fetchOverviewTimeseries = async (baseUrl = backendUrl, granularity = chartGranularity, tz = timezone) => {
+    const fetchOverviewTimeseries = async (baseUrl = backendUrl, granularity = chartGranularity) => {
         if (!baseUrl) return false;
 
         try {
-            const params = new URLSearchParams({ granularity, timezone: resolveTimezone(tz) });
+            const params = new URLSearchParams({ granularity });
             const response = await fetch(`${baseUrl}/api/overview/timeseries?${params.toString()}`);
             if (!response.ok) throw new Error("unavailable");
 
@@ -407,7 +328,7 @@ function App() {
             fetchAccounts(normalized),
             fetchFilteredTransactions(normalized, { page: 1, append: false }),
             fetchOverview(normalized),
-            fetchOverviewTimeseries(normalized, chartGranularity, timezone),
+            fetchOverviewTimeseries(normalized, chartGranularity),
             fetchAccountsOverview(normalized),
         ]);
 
@@ -440,7 +361,7 @@ function App() {
             fetchAccounts(normalized),
             fetchFilteredTransactions(normalized, { page: 1, append: false }),
             fetchOverview(normalized),
-            fetchOverviewTimeseries(normalized, chartGranularity, timezone),
+            fetchOverviewTimeseries(normalized, chartGranularity),
             fetchAccountsOverview(normalized),
         ]).then(([accountsOk, transactionsOk, overviewOk, timeseriesOk, accountsOverviewOk]) => {
             const ok = accountsOk || transactionsOk || overviewOk || timeseriesOk || accountsOverviewOk;
@@ -463,8 +384,8 @@ function App() {
 
     useEffect(() => {
         if (!isConnected || !backendUrl) return;
-        fetchOverviewTimeseries(backendUrl, chartGranularity, timezone);
-    }, [chartGranularity, timezone, isConnected, backendUrl]);
+        fetchOverviewTimeseries(backendUrl, chartGranularity);
+    }, [chartGranularity, isConnected, backendUrl]);
 
     useEffect(() => {
         if (!isConnected || !backendUrl) return;
@@ -514,7 +435,7 @@ function App() {
             currency: transaction.currency || "SGD",
             category: transaction.category || "",
             mcc_code: transaction.mcc_code || "",
-            transaction_timestamp: toTimezoneLocalInput(transaction.transaction_timestamp, timezone),
+            transaction_timestamp: new Date(transaction.transaction_timestamp).toISOString().slice(0, 16),
         });
     };
 
@@ -531,7 +452,7 @@ function App() {
             currency: "SGD",
             category: "",
             mcc_code: "",
-            transaction_timestamp: toTimezoneLocalInput(new Date().toISOString(), timezone),
+            transaction_timestamp: new Date().toISOString().slice(0, 16),
         });
         setIsAddModalOpen(true);
     };
@@ -565,7 +486,7 @@ function App() {
                     currency: editForm.currency,
                     category: editForm.category,
                     mcc_code: editForm.mcc_code,
-                    transaction_timestamp: fromTimezoneLocalInput(editForm.transaction_timestamp, timezone),
+                    transaction_timestamp: new Date(editForm.transaction_timestamp).toISOString(),
                 }),
             });
 
@@ -599,7 +520,7 @@ function App() {
                     currency: addForm.currency,
                     category: addForm.category,
                     mcc_code: addForm.mcc_code,
-                    transaction_timestamp: fromTimezoneLocalInput(addForm.transaction_timestamp, timezone),
+                    transaction_timestamp: new Date(addForm.transaction_timestamp).toISOString(),
                 }),
             });
 
@@ -666,7 +587,7 @@ function App() {
             return;
         }
 
-        fetchOverviewTimeseries(backendUrl, chartGranularity, timezone);
+        fetchOverviewTimeseries(backendUrl, chartGranularity);
     };
 
     const totalSpending = overviewSummary.totalSpending;
@@ -757,21 +678,12 @@ function App() {
                         <p className="screen-title">Transactions</p>
                         <h1>Transaction Tracker</h1>
                     </div>
-                    <div className="header-actions">
-                        <button
-                            className="theme-toggle"
-                            onClick={() => setIsTimezoneModalOpen(true)}
-                            title="Select time zone"
-                        >
-                            <Clock size={16} /> {resolveTimezone(timezone).replace(/_/g, " ")}
-                        </button>
-                        <button
-                            className="theme-toggle"
-                            onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
-                        >
-                            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />} {theme === "dark" ? "Light" : "Dark"}
-                        </button>
-                    </div>
+                    <button
+                        className="theme-toggle"
+                        onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
+                    >
+                        {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />} {theme === "dark" ? "Light" : "Dark"}
+                    </button>
                 </div>
             </header>
 
@@ -972,7 +884,7 @@ function App() {
                                             <article key={transaction.id} className="tx-card">
                                                 <div>
                                                     <p className="merchant">{transaction.merchant || "Unknown merchant"}</p>
-                                                    <p className="meta">{formatDate(transaction.transaction_timestamp, resolveTimezone(timezone))}</p>
+                                                    <p className="meta">{formatDate(transaction.transaction_timestamp)}</p>
                                                     <p className="meta">{accountLabelById.get(transaction.account_id) || "-"}</p>
                                                 </div>
                                                 <div className="tx-right">
@@ -1029,9 +941,6 @@ function App() {
                         <main className="charts-panel">
                             <section className="chart-filter-card">
                                 <h2>Spending Over Time</h2>
-                                <p className="tz-note">
-                                    <Clock size={12} className="ui-icon" /> {resolveTimezone(timezone)}
-                                </p>
                                 <div className="granularity-tabs">
                                     <button
                                         className={chartGranularity === "day" ? "active" : ""}
@@ -1113,33 +1022,6 @@ function App() {
                     saving={saving}
                 />
             </Suspense>
-
-            {isTimezoneModalOpen && (
-                <div className="modal-backdrop" onClick={() => setIsTimezoneModalOpen(false)}>
-                    <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2><Clock size={16} className="ui-icon" /> Select Time Zone</h2>
-                            <button className="icon-close" onClick={() => setIsTimezoneModalOpen(false)}>×</button>
-                        </div>
-                        <form className="editor-form">
-                            <label>
-                                Time Zone
-                                <select
-                                    value={timezone}
-                                    onChange={(e) => {
-                                        setTimezone(e.target.value);
-                                        setIsTimezoneModalOpen(false);
-                                    }}
-                                >
-                                    {COMMON_TIMEZONES.map((tz) => (
-                                        <option key={tz.value} value={tz.value}>{tz.label}</option>
-                                    ))}
-                                </select>
-                            </label>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
