@@ -29,6 +29,11 @@ function formatDate(dateString) {
     return new Date(dateString).toLocaleString();
 }
 
+function toLocalDateTimeString(date) {
+    const offset = date.getTimezoneOffset() * 60000;
+    return new Date(date - offset).toISOString().slice(0, 16);
+}
+
 function getCategoryLabel(transaction) {
     return transaction.mcc_description?.trim() || transaction.category?.trim() || "Uncategorized";
 }
@@ -152,7 +157,7 @@ function App() {
         currency: "SGD",
         category: "",
         mcc_code: "",
-        transaction_timestamp: new Date().toISOString().slice(0, 16),
+        transaction_timestamp: toLocalDateTimeString(new Date()),
     });
     const [addAccountForm, setAddAccountForm] = useState({
         bank: "",
@@ -435,7 +440,7 @@ function App() {
             currency: transaction.currency || "SGD",
             category: transaction.category || "",
             mcc_code: transaction.mcc_code || "",
-            transaction_timestamp: new Date(transaction.transaction_timestamp).toISOString().slice(0, 16),
+            transaction_timestamp: toLocalDateTimeString(new Date(transaction.transaction_timestamp)),
         });
     };
 
@@ -452,7 +457,7 @@ function App() {
             currency: "SGD",
             category: "",
             mcc_code: "",
-            transaction_timestamp: new Date().toISOString().slice(0, 16),
+            transaction_timestamp: toLocalDateTimeString(new Date()),
         });
         setIsAddModalOpen(true);
     };
