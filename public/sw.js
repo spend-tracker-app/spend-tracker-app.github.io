@@ -1,4 +1,4 @@
-const CACHE_NAME = "tx-manager-cache-v1";
+const CACHE_NAME = "tx-manager-cache-v2";
 
 self.addEventListener("install", (event) => {
     const appShellUrl = new URL("index.html", self.registration.scope).toString();
@@ -26,6 +26,13 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
     if (event.request.method !== "GET") return;
+
+    const requestUrl = new URL(event.request.url);
+    const appOrigin = self.location.origin;
+
+    if (requestUrl.origin !== appOrigin) {
+        return;
+    }
 
     if (event.request.mode === "navigate") {
         const appShellUrl = new URL("index.html", self.registration.scope).toString();
