@@ -37,6 +37,12 @@ function normalizeCategoryName(category) {
     return String(category || "").trim() || "Uncategorized";
 }
 
+function toLocalDateTimeInput(date) {
+    const d = new Date(date);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function normalizeBackendUrl(url) {
     if (!url) return "";
     return String(url).trim().replace(/\/$/, "");
@@ -152,7 +158,7 @@ function App() {
         currency: "SGD",
         category: "",
         mcc_code: "",
-        transaction_timestamp: new Date().toISOString().slice(0, 16),
+        transaction_timestamp: toLocalDateTimeInput(new Date()),
     });
     const [addAccountForm, setAddAccountForm] = useState({
         bank: "",
@@ -435,7 +441,7 @@ function App() {
             currency: transaction.currency || "SGD",
             category: transaction.category || "",
             mcc_code: transaction.mcc_code || "",
-            transaction_timestamp: new Date(transaction.transaction_timestamp).toISOString().slice(0, 16),
+            transaction_timestamp: toLocalDateTimeInput(transaction.transaction_timestamp),
         });
     };
 
@@ -452,7 +458,7 @@ function App() {
             currency: "SGD",
             category: "",
             mcc_code: "",
-            transaction_timestamp: new Date().toISOString().slice(0, 16),
+            transaction_timestamp: toLocalDateTimeInput(new Date()),
         });
         setIsAddModalOpen(true);
     };
