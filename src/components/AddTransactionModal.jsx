@@ -4,6 +4,9 @@ function AddTransactionModal({
     onAdd,
     addForm,
     setAddForm,
+    showMccOptions,
+    setShowMccOptions,
+    mccOptions,
     accounts,
     adding,
 }) {
@@ -78,12 +81,32 @@ function AddTransactionModal({
                         />
                     </label>
 
-                    <label>
+                    <label className="mcc-field">
                         MCC
                         <input
                             value={addForm.mcc_code}
+                            onFocus={() => setShowMccOptions(true)}
+                            onBlur={() => setTimeout(() => setShowMccOptions(false), 150)}
                             onChange={(event) => setAddForm((prev) => ({ ...prev, mcc_code: event.target.value }))}
+                            placeholder="Type code or description"
                         />
+                        {showMccOptions && mccOptions.length > 0 && (
+                            <ul className="mcc-options">
+                                {mccOptions.map((option) => (
+                                    <li
+                                        key={option.mcc}
+                                        onMouseDown={(event) => {
+                                            event.preventDefault();
+                                            setAddForm((prev) => ({ ...prev, mcc_code: option.mcc }));
+                                            setShowMccOptions(false);
+                                        }}
+                                    >
+                                        <strong>{option.mcc}</strong>
+                                        <span>{option.description || "No description"}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </label>
 
                     <label>

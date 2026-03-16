@@ -419,19 +419,21 @@ function App() {
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
-            if (!isConnected || !backendUrl || !editForm.mcc_code?.trim()) {
+            const mccQuery = selectedTransaction ? editForm.mcc_code : isAddModalOpen ? addForm.mcc_code : "";
+
+            if (!isConnected || !backendUrl || !mccQuery?.trim()) {
                 setMccOptions([]);
                 return;
             }
 
-            fetch(`${backendUrl}/api/mcc?q=${encodeURIComponent(editForm.mcc_code)}&limit=1000`)
+            fetch(`${backendUrl}/api/mcc?q=${encodeURIComponent(mccQuery)}&limit=1000`)
                 .then((res) => (res.ok ? res.json() : []))
                 .then((data) => setMccOptions(Array.isArray(data) ? data : []))
                 .catch(() => setMccOptions([]));
         }, 250);
 
         return () => clearTimeout(timeoutId);
-    }, [backendUrl, editForm.mcc_code, isConnected]);
+    }, [backendUrl, editForm.mcc_code, addForm.mcc_code, isAddModalOpen, selectedTransaction, isConnected]);
 
     const openEditModal = (transaction) => {
         setSelectedTransaction(transaction);
@@ -1005,6 +1007,9 @@ function App() {
                     onAdd={onAdd}
                     addForm={addForm}
                     setAddForm={setAddForm}
+                    showMccOptions={showMccOptions}
+                    setShowMccOptions={setShowMccOptions}
+                    mccOptions={mccOptions}
                     accounts={accounts}
                     adding={adding}
                 />
