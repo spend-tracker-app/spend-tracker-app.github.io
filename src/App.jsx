@@ -1052,6 +1052,9 @@ function App() {
           setAddForm={setAddForm}
           accounts={accounts}
           adding={adding}
+          showMccOptions={showMccOptions}
+          setShowMccOptions={setShowMccOptions}
+          mccOptions={mccOptions}
         />
         <AddAccountModal
           isOpen={isAddAccountModalOpen}
