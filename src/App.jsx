@@ -549,6 +549,7 @@ function App() {
 
       closeEditAccountModal();
       await fetchOverview();
+      await fetchAccountsOverview(backendUrl);
     } catch {
       setIsConnected(true);
     } finally {
