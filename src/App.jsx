@@ -552,7 +552,7 @@ function App() {
       if (!response.ok) throw new Error("unavailable");
 
       closeEditAccountModal();
-      await fetchOverview();
+      await fetchOverview(backendUrl);
     } catch {
       setIsConnected(true);
     } finally {
