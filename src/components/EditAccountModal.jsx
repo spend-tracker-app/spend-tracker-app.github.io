@@ -3,7 +3,7 @@ function EditAccountModal({
   closeEditAccountModal,
   onSaveAccount,
   editAccountForm,
-  setEditAccoutnForm,
+  setEditAccountForm,
   savingAccount = false,
 }) {
   if (!selectedAccount) return null;
@@ -23,7 +23,7 @@ function EditAccountModal({
             Nickname
             <input
               value={editAccountForm.nickname}
-              onChange={(event) => setEditAccoutnForm((prev) => ({ ...prev, nickname: event.target.value }))}
+              onChange={(event) => setEditAccountForm((prev) => ({ ...prev, nickname: event.target.value }))}
               placeholder="e.g. Travel Card, Main Wallet"
               maxLength={32}
               required
