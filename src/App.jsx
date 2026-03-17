@@ -454,6 +454,13 @@ function App() {
     });
   };
 
+  const openEditAccountModal = (account) => {
+    setSelectedAccount(account);
+    setEditAccountForm({
+      nickname: account.nickname || "",
+    });
+  };
+
   const closeEditModal = () => {
     setSelectedTransaction(null);
     setShowMccOptions(false);
@@ -883,6 +890,7 @@ function App() {
                         <p className="amount">{formatCurrency(account.total_spending)}</p>
                         <p className="meta">{account.transaction_count} transactions</p>
                         <p className="meta">Avg {formatCurrency(account.average_transaction)}</p>
+                        <button onClick={() => openEditAccountModal(account)}>Edit</button>
                       </div>
                     </article>
                   ))}
