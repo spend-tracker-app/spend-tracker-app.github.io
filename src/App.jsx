@@ -1073,7 +1073,7 @@ function App() {
         />
         <EditTransactionModal
           selectedTransaction={selectedTransaction}
-          closeEditAccountModal={closeEditModal}
+          closeEditModal={closeEditModal}
           onSave={onSave}
           editForm={editForm}
           setEditForm={setEditForm}
