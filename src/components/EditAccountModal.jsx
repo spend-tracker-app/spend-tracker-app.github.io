@@ -12,7 +12,7 @@ function EditAccountModal({
     <div className="modal-backdrop" onClick={closeEditAccountModal}>
       <section className="modal-card" onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
-          <h2>Add Account Nickname</h2>
+          <h2>Edit Account Nickname</h2>
           <button className="icon-close" onClick={closeEditAccountModal}>
             ×
           </button>
