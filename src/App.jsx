@@ -883,10 +883,13 @@ function App() {
                   {accountsOverview.map((account) => (
                     <article key={account.id} className="account-card">
                       <div>
-                        <p className="merchant">{account.bank}</p>
-                        <p className="meta">{account.identifier || "No identifier"}</p>
-                      </div>
-                      <div className="tx-right">
+                        <p className="merchant">{account.card_alias ? account.card_alias : account.bank}</p>
+                        <p className="meta">
+                          {account.card_alias ? account.bank : ''}
+                          {' '}
+                          {account.identifier || "No identifier"}
+                        </p>
+                      </div>                  <div className="tx-right">
                         <p className="amount">{formatCurrency(account.total_spending)}</p>
                         <p className="meta">{account.transaction_count} transactions</p>
                         <p className="meta">Avg {formatCurrency(account.average_transaction)}</p>
