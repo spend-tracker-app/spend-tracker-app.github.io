@@ -425,19 +425,26 @@ function App() {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (!isConnected || !backendUrl || !editForm.mcc_code?.trim()) {
+      // Determine which MCC code to use based on the active modal (edit vs add)
+      const mccQuery = isEditModalOpen
+        ? editForm.mcc_code
+        : isAddModalOpen
+        ? addForm.mcc_code
+        : "";
+
+      if (!isConnected || !backendUrl || !mccQuery?.trim()) {
         setMccOptions([]);
         return;
       }
 
-      fetch(`${backendUrl}/api/mcc?q=${encodeURIComponent(editForm.mcc_code)}&limit=1000`)
+      fetch(`${backendUrl}/api/mcc?q=${encodeURIComponent(mccQuery)}&limit=1000`)
         .then((res) => (res.ok ? res.json() : []))
         .then((data) => setMccOptions(Array.isArray(data) ? data : []))
         .catch(() => setMccOptions([]));
     }, 250);
 
     return () => clearTimeout(timeoutId);
-  }, [backendUrl, editForm.mcc_code, isConnected]);
+  }, [backendUrl, editForm.mcc_code, addForm.mcc_code, isConnected, isEditModalOpen, isAddModalOpen]);
 
   const openEditModal = (transaction) => {
     setSelectedTransaction(transaction);
