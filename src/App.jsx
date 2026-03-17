@@ -234,7 +234,8 @@ function App() {
         if (!baseUrl) return false;
 
         try {
-            const params = new URLSearchParams({ granularity });
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+            const params = new URLSearchParams({ granularity, timezone });
             const response = await fetch(`${baseUrl}/api/overview/timeseries?${params.toString()}`);
             if (!response.ok) throw new Error("unavailable");
 
