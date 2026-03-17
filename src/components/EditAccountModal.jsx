@@ -34,7 +34,7 @@ function EditAccountModal({
             <button type="button" className="ghost" onClick={closeEditAccountModal}>
               Cancel
             </button>
-            <button type="submit" disabled={saving}>
+            <button type="submit" disabled={savingAccount}>
               {savingAccount ? "Saving..." : "Save"}
             </button>
           </div>
