@@ -77,7 +77,8 @@ function EditTransactionModal({
                                 {mccOptions.map((option) => (
                                     <li
                                         key={option.mcc}
-                                        onClick={() => {
+                                        onMouseDown={(event) => {
+                                            event.preventDefault();
                                             setEditForm((prev) => ({ ...prev, mcc_code: option.mcc }));
                                             setShowMccOptions(false);
                                         }}
