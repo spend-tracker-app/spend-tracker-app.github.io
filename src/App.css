@@ -644,13 +644,13 @@ button:active {
         align-items: flex-start;
     }
 
-    .tx-right {
+    .tx-card .tx-right {
         width: 100%;
         text-align: left;
         justify-items: start;
     }
 
-    .amount {
+    .tx-card .amount {
         text-align: left;
     }
 
